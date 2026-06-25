@@ -1,6 +1,9 @@
 # logi_veille_HEG
 Logiciel de veille Open Source. Réalisé dans le cadre d'un mandat de veille pour le compte de M. Sievering.
 
+# Crédits
+Ali Kaley Muna ; Glassey Léa ; Grosso Luca ; Frey Morgane ; Thai Nathan
+
 # Guide d'utilisation
 ## n8n
 Vous trouverez dans le dossier n8n cinq fichiers JSON correspondant chacun à un workflow n8n. Pour les importer, créez un nouveau workflow dans votre environnement n8n. Faites dérouler les options en haut à droite et sélectionnez « Import from file… ». Répétez cette action pour chaque workflow.
