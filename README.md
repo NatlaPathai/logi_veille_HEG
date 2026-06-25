@@ -16,3 +16,6 @@ Le fichier main.py correspond à l’API de la base de données. Pour la rendre 
 ## requete_sql.txt
 Le fichier requete_sql.txt contient quatre requêtes SQL à lancer dans la base de données afin de créer les tables de la base de données. Il est recommandé de nommer la base de données comme suit afin d’éviter d’avoir à modifier certains nœuds n8n : 
 n8n_AthenaIA
+
+## test_time.py
+Ce fichier est un fichier test pour l'amélioration du logiciel. Vous pouvez l'ignorer.
