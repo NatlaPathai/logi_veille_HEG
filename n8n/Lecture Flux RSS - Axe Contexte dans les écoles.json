@@ -1,0 +1,388 @@
+{
+  "name": "Lecture Flux RSS - Axe Contexte dans les écoles",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "0a116502-6c82-4406-9564-1f1ac028371a",
+      "name": "Déclencheur Lundi 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "f7d1c686-e42a-4a04-87c2-3fe533c56a49",
+      "name": "Lecture Flux RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        224,
+        160
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "(IA|intelligence artificielle|agent de dialogue|chatbot|IAG|dialogueur|apprentissage automatique|agent de conversation|agent conversationnel|LLM|machine learning|chatGPT|Claude|Gemini|Copilot)"
+            },
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "(enseignement|éducation|enseignant|établissement scolaire|établissements scolaires|collège|centre professionnel|pédagogie|étudiant|études|formation|secondaire)"
+            }
+          ]
+        }
+      },
+      "id": "6e7b4385-0063-462f-a297-cc0337fac239",
+      "name": "Filtre Mots-Clés",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        32
+      ],
+      "id": "2386672a-5c30-4a24-9a9b-6f311aeec2d7",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        864,
+        0
+      ],
+      "id": "969f1422-ef46-4546-86a8-c8287ad2b135",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "axe_contexte",
+          "mode": "list",
+          "cachedResultName": "axe_contexte"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "link",
+        "valueToMatchOn": "={{ $json.link }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "content",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "column": "source_name",
+              "value": "={{ $json.source_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        864,
+        256
+      ],
+      "id": "e41aca60-00ec-443e-87bb-ed37f2754b25",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "WyTuINRgDZUcXSyp",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { url: \"https://www.eduvaud.ch/types-ressources/ia/feed/\" },\n  { url: \"https://wp.unil.ch/newsci/feed/\" },\n  { url: \"https://www.unige.ch/actualites/rss\" },\n  { url: \"https://actu.epfl.ch/feeds/rss/enac/fr/\" },\n  { url: \"https://www.hes-so.ch/actualites/rss-news?type=600\" }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "6916e5db-aa27-4471-9540-cba3aa9d6821",
+      "name": "Liste des sources - flux RSS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28cd0244-60c4-4d4f-934d-e4134e58fc22",
+              "name": "source_name",
+              "value": "={{ $('Loop Over Items').item.json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        432,
+        240
+      ],
+      "id": "b82af42e-7b56-46e6-8f27-a83b7e0defe3",
+      "name": "Ajout du nom de la source à l'article"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"Tu es un expert en données. Reçois la date suivante : {{ $json.pubDate }}.\nTa mission est de la convertir au format SQL DATETIME strict : YYYY-MM-DD HH:mm:ss.\nSi l'heure est manquante, utilise 00:00:00. Ne réponds QUE par la date formatée, sans texte additionnel.\"",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        496,
+        -192
+      ],
+      "id": "2e3bdcf2-859d-4c2b-a43a-5b11161d5b00",
+      "name": "Normalisation des dates"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        464,
+        64
+      ],
+      "id": "e73ac7fc-21ea-4902-8fa9-a626c27bf7a9",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Sx2FwabeXED9D21V",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abde5ec1-4064-4f4c-b535-abff4f466b76",
+              "name": "pubDate",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "except",
+        "excludeFields": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "f77675e6-57b8-4273-a307-b8570775600d",
+      "name": "Préparation des données pour la BDD"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Déclencheur Lundi 8h": {
+      "main": [
+        [
+          {
+            "node": "Liste des sources - flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lecture Flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Ajout du nom de la source à l'article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtre Mots-Clés": {
+      "main": [
+        [
+          {
+            "node": "Normalisation des dates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Filtre Mots-Clés",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lecture Flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Préparation des données pour la BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        []
+      ]
+    },
+    "Liste des sources - flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajout du nom de la source à l'article": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisation des dates": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Normalisation des dates",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation des données pour la BDD": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ad6fc9e9-34f2-47fa-9fdb-6edbc3464b43",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "116cf0ca1c1cf232ab6b902f8e6bd446ea6d1d62ba97ade3d6b42bf20b3eca31"
+  },
+  "id": "evFtqKQlAx5BKozu",
+  "tags": []
+}

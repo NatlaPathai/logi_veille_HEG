@@ -1,0 +1,387 @@
+{
+  "name": "Lecture Flux RSS - Axe actualité",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "6b1465e3-1e35-4a05-87a2-7054f2d1966f",
+      "name": "Déclencheur Lundi 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "52d44440-3240-4378-a7f6-8388c8c90d8f",
+      "name": "Lecture Flux RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        208,
+        224
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "(IA|intelligence artificielle|chatbot|IAG|LLM|chatGPT|Claude|Gemini|Copilot|machine learning)"
+            },
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "(enseignement|éducation|enseignant|école|collège|université|haute école|pédagogie|formation|secondaire)"
+            }
+          ]
+        }
+      },
+      "id": "cc8bf49a-56bf-48e3-b826-06860fc225b1",
+      "name": "Filtre Mots-Clés",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        32
+      ],
+      "id": "12b8d961-92cc-4e1a-9bb0-7156008cbbb2",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        864,
+        64
+      ],
+      "id": "794a536f-43d5-4abb-a56c-1c6ea4c454a5",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "axe_actualite",
+          "mode": "list",
+          "cachedResultName": "axe_actualite"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "link",
+        "valueToMatchOn": "={{ $json.link }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "content",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "column": "source_name",
+              "value": "={{ $json.source_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        896,
+        336
+      ],
+      "id": "70391753-a54a-4626-bcba-56679ed79d18",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "WyTuINRgDZUcXSyp",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { url: \"https://www.educa.ch/fr/news_feed\" },\n  { url: \"https://www.ludomag.com/feed/\" },\n  { url: \"https://www.ludomag.com/category/actualites-en-bref/x-toute-l-info/feed/\" },\n  { url: \"https://www.tice-education.fr/?format=feed&type=atom\" },\n  { url: \"https://www.innovation-pedagogique.fr/spip.php?page=backend&id_rubrique=70\" },\n  { url: \"https://ecolebranchee.com/feed/\" },\n  { url: \"https://www.cafepedagogique.net/category/vie-ecole/ia-education/feed/\" },\n  { url: \"https://www.vousnousils.fr/feed\" },\n  { url: \"https://www.cahiers-pedagogiques.com/feed/\" },\n  { url: \"https://portaileduc.net/website/category/numerique-education/ia-education/feed/\" },\n  { url: \"https://www.ictjournal.ch/taxonomy/term/404/feed\" },\n  { url: \"https://www.ge.ch/rss/publication?type=460&organisation=100\" }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "8aad06e1-6ef5-4a58-9688-d433b1f2892b",
+      "name": "Liste des sources - flux RSS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28cd0244-60c4-4d4f-934d-e4134e58fc22",
+              "name": "source_name",
+              "value": "={{ $('Loop Over Items').item.json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        288
+      ],
+      "id": "305dde58-9577-4fe4-8362-213a4bfde560",
+      "name": "Ajout du nom de la source à l'article"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"Tu es un expert en données. Reçois la date suivante : {{ $json.pubDate }}.\nTa mission est de la convertir au format SQL DATETIME strict : YYYY-MM-DD HH:mm:ss.\nSi l'heure est manquante, utilise 00:00:00. Ne réponds QUE par la date formatée, sans texte additionnel.\"",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        528,
+        -144
+      ],
+      "id": "b9ac5186-c5f7-4564-8c5c-83314c9b546a",
+      "name": "Normalisation des dates"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        496,
+        112
+      ],
+      "id": "bfb075b1-3bbd-45fd-8634-6031b848ec2f",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Sx2FwabeXED9D21V",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abde5ec1-4064-4f4c-b535-abff4f466b76",
+              "name": "pubDate",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "except",
+        "excludeFields": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        64
+      ],
+      "id": "2af97a51-567e-4d9a-9baa-5371ee41dc95",
+      "name": "Préparation des données pour la BDD"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Déclencheur Lundi 8h": {
+      "main": [
+        [
+          {
+            "node": "Liste des sources - flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lecture Flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Ajout du nom de la source à l'article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtre Mots-Clés": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Normalisation des dates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Filtre Mots-Clés",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lecture Flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Préparation des données pour la BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        []
+      ]
+    },
+    "Liste des sources - flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajout du nom de la source à l'article": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisation des dates": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Normalisation des dates",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation des données pour la BDD": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b5e974a1-8fe1-4432-b64c-62fea4279944",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "116cf0ca1c1cf232ab6b902f8e6bd446ea6d1d62ba97ade3d6b42bf20b3eca31"
+  },
+  "id": "cRlIdJ5iQ7sFHEJf",
+  "tags": []
+}

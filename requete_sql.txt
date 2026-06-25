@@ -1,0 +1,39 @@
+CREATE TABLE axe_actualite (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    link VARCHAR(511) NOT NULL UNIQUE,
+    pub_date DATE,
+    content TEXT,
+    source_name VARCHAR(255),
+    is_selected TINYINT(1) DEFAULT 0
+);
+
+CREATE TABLE axe_contexte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    link VARCHAR(511) NOT NULL UNIQUE,
+    pub_date DATE,
+    content TEXT,
+    source_name VARCHAR(255),
+    is_selected TINYINT(1) DEFAULT 0
+);
+
+CREATE TABLE axe_legal (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    link VARCHAR(511) NOT NULL UNIQUE,
+    pub_date DATE,
+    content TEXT,
+    source_name VARCHAR(255),
+    is_selected TINYINT(1) DEFAULT 0
+);
+
+CREATE TABLE axe_outils (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    link VARCHAR(511) NOT NULL UNIQUE,
+    pub_date DATE,
+    content TEXT,
+    source_name VARCHAR(255),
+    is_selected TINYINT(1) DEFAULT 0
+);

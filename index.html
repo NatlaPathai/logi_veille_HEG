@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Athéna IA Hub - Sélection de Veille</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .article-card.selected {
+            border: 2px solid #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        .article-content img { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-20 font-sans">
+
+    <header class="bg-white border-b border-slate-200 p-6 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">ATHÉNA <span class="text-blue-600">IA HUB</span></h1>
+                <p class="text-slate-500 text-sm">Outil de veille HEG Genève</p>
+            </div>
+            <button onclick="sendToN8N()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition-all shadow-lg">
+                Générer la Newsletter (<span id="count">0</span>)
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6" id="container">
+        <div id="loading" class="text-center py-20 text-slate-400 font-medium text-lg">Initialisation des connexions API...</div>
+    </main>
+
+    <script>
+        let selection = [];
+        const BASE_URL = "http://127.0.0.1:8001";
+        
+        const axes = [
+            { id: 'axe_actualite', label: 'Actualité IA', color: 'bg-orange-100 text-orange-700' },
+            { id: 'axe_contexte', label: 'Suisse Romande', color: 'bg-red-100 text-red-700' },
+            { id: 'axe_legal', label: 'Cadre Légal', color: 'bg-purple-100 text-purple-700' },
+            { id: 'axe_outils', label: 'Outils IA', color: 'bg-green-100 text-green-700' }
+        ];
+
+        async function loadAllAxes() {
+            const container = document.getElementById('container');
+            container.innerHTML = ""; 
+
+            // Utilisation d'une boucle synchrone pour garantir l'ordre des sections
+            for (const axe of axes) {
+                try {
+                    const response = await fetch(`${BASE_URL}/${axe.id}`);
+                    const articles = await response.json();
+                    if (articles && articles.length > 0) {
+                        renderSection(axe, articles);
+                    }
+                } catch (err) {
+                    console.error(`Impossible de charger l'axe ${axe.id}:`, err);
+                }
+            }
+        }
+
+        function renderSection(axe, articles) {
+            const container = document.getElementById('container');
+            const section = document.createElement('section');
+            section.className = "mb-16";
+            
+            section.innerHTML = `<h2 class="text-xl font-bold text-slate-800 mb-6 border-l-4 border-blue-600 pl-4 uppercase tracking-wide">${axe.label}</h2>`;
+
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
+
+            articles.forEach(art => {
+                const uniqueId = `${axe.id}_${art.id}`; // Identifiant unique combiné
+                const card = document.createElement('div');
+                card.id = `card-${uniqueId}`;
+                card.dataset.fulltext = art.content || "Pas de description.";
+                card.className = "article-card bg-white border border-slate-200 p-5 rounded-2xl cursor-pointer hover:shadow-md transition-all flex flex-col justify-between h-full";
+                
+                card.onclick = (e) => {
+                    // On ne sélectionne pas si on clique sur un bouton ou un lien
+                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A' && !e.target.closest('a')) {
+                        toggleSelection(art.id, axe.id, card);
+                    }
+                };
+
+                // Nettoyage pour l'aperçu court
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = card.dataset.fulltext;
+                const plainText = tempDiv.textContent || tempDiv.innerText || "";
+                const isLong = plainText.length > 200;
+                const shortText = isLong ? plainText.substring(0, 200) + "..." : plainText;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="${axe.color} text-[10px] font-bold px-2 py-1 rounded-md uppercase">
+                                ${art.source_name || 'Source'}
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-800 leading-snug mb-3">${art.title}</h3>
+                        <div class="text-slate-600 text-sm leading-relaxed article-content">
+                            <div id="text-box-${uniqueId}">${shortText}</div>
+                            ${isLong ? `
+                                <button onclick="event.stopPropagation(); handleReadMore('${uniqueId}', this)" 
+                                        class="text-blue-600 font-bold hover:underline mt-3 block">
+                                    Lire la suite
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-100 text-[10px] text-slate-400 uppercase font-medium">
+                        <span>${art.pub_date}</span>
+                        <a href="${art.link}" target="_blank" onclick="event.stopPropagation()" class="text-slate-300 hover:text-blue-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        </a>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            section.appendChild(grid);
+            container.appendChild(section);
+        }
+
+        function handleReadMore(uniqueId, btn) {
+            const card = document.getElementById(`card-${uniqueId}`);
+            const textBox = document.getElementById(`text-box-${uniqueId}`);
+            const fullHTML = card.dataset.fulltext;
+            
+            if (btn.innerText === "Lire la suite") {
+                textBox.innerHTML = fullHTML;
+                btn.innerText = "Réduire";
+            } else {
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = fullHTML;
+                const plainText = tempDiv.textContent || tempDiv.innerText || "";
+                textBox.innerHTML = plainText.substring(0, 200) + "...";
+                btn.innerText = "Lire la suite";
+            }
+        }
+
+        function toggleSelection(id, axeId, el) {
+            const index = selection.findIndex(s => s.id === id && s.axe === axeId);
+            if (index > -1) {
+                selection.splice(index, 1);
+                el.classList.remove('selected');
+            } else {
+                selection.push({ id: id, axe: axeId });
+                el.classList.add('selected');
+            }
+            document.getElementById('count').innerText = selection.length;
+        }
+
+        async function sendToN8N() {
+            if (selection.length === 0) return alert("Veuillez sélectionner au moins un article.");
+            
+            const btn = document.querySelector('button[onclick="sendToN8N()"]');
+            const originalText = btn.innerText;
+            
+            try {
+                // Effet visuel de chargement
+                btn.disabled = true;
+                btn.innerText = "Génération en cours...";
+
+                const response = await fetch("http://localhost:5678/webhook/selection-newsletter", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(selection) // Envoie [{id: 1, axe: '...'}, ...]
+                });
+
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    alert("✅ " + result.message);
+                    // Optionnel : rafraîchir la page pour faire disparaître les articles envoyés
+                    location.reload(); 
+                } else {
+                    throw new Error("Erreur serveur");
+                }
+            } catch (error) {
+                alert("❌ Erreur lors de l'envoi : " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        loadAllAxes();
+    </script>
+</body>
+</html>

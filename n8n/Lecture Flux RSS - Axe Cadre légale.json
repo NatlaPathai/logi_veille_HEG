@@ -1,0 +1,388 @@
+{
+  "name": "Lecture Flux RSS - Axe Cadre légale",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "2b73d8ae-f43d-4ab1-87c9-44f71a258c57",
+      "name": "Déclencheur Lundi 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "d37d0cff-864f-4dda-a3a0-fc05acd0a1ed",
+      "name": "Lecture Flux RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        240,
+        208
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "=(IA|intelligence artificielle|agent de dialogue|chatbot|IAG|apprentissage automatique|agent de conversation|agent conversationnel|LLM|machine learning|chatGPT|Claude|Gemini|Copilot)"
+            },
+            {
+              "value1": "={{ $json.title + ' ' + ($json.content || '') }}",
+              "operation": "regex",
+              "value2": "(droit|loi|lois|réglement|propriété intelectuelle|protection des données|cadre légal|droit d'auteur|transparence|légal|directive|lignes directrices|conseil fédéral)"
+            }
+          ]
+        }
+      },
+      "id": "082a531c-ef0e-4899-aa4f-abfc51ee9520",
+      "name": "Filtre Mots-Clés",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        32
+      ],
+      "id": "8de113e7-907e-43d7-b9c5-d1033684fc47",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        832,
+        16
+      ],
+      "id": "302d3b5e-3429-4504-90bb-fc820eef9987",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "axe_legal",
+          "mode": "list",
+          "cachedResultName": "axe_legal"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "link",
+        "valueToMatchOn": "={{ $json.link }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "column": "pub_date",
+              "value": "={{ $json.pubDate }}"
+            },
+            {
+              "column": "content",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "column": "source_name",
+              "value": "={{ $json.source_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        848,
+        224
+      ],
+      "id": "115c09a8-75c9-4312-941c-81b28374bfb5",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "WyTuINRgDZUcXSyp",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  { url: \"https://www.educa.ch/fr/news_feed\" },\n  { url: \"https://www.ictjournal.ch/taxonomy/term/404/feed\" },\n  { url: \"https://www.ge.ch/rss/publication?type=460&organisation=100\" },\n  { url: \"https://www.eduvaud.ch/types-ressources/ia/feed/\" }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        32
+      ],
+      "id": "2a70d538-a318-4357-93ea-5ea4ee51f974",
+      "name": "Liste des sources - flux RSS"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "28cd0244-60c4-4d4f-934d-e4134e58fc22",
+              "name": "source_name",
+              "value": "={{ $('Loop Over Items').item.json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        320
+      ],
+      "id": "27ff64f4-c5e3-4b56-9baa-a48d85003883",
+      "name": "Ajout du nom de la source à l'article"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"Tu es un expert en données. Reçois la date suivante : {{ $json.pubDate }}.\nTa mission est de la convertir au format SQL DATETIME strict : YYYY-MM-DD HH:mm:ss.\nSi l'heure est manquante, utilise 00:00:00. Ne réponds QUE par la date formatée, sans texte additionnel.\"",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        480,
+        -160
+      ],
+      "id": "66365123-4894-46cc-8cdb-e31cb23b0db8",
+      "name": "Normalisation des dates"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abde5ec1-4064-4f4c-b535-abff4f466b76",
+              "name": "pubDate",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "except",
+        "excludeFields": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        16
+      ],
+      "id": "03be469a-b2ee-4ac1-aff8-bb492117e2a1",
+      "name": "Préparation des données pour la BDD"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        448,
+        144
+      ],
+      "id": "38ce2cad-fbe6-4382-ad4b-1d1949f3a1d3",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Sx2FwabeXED9D21V",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Déclencheur Lundi 8h": {
+      "main": [
+        [
+          {
+            "node": "Liste des sources - flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lecture Flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Ajout du nom de la source à l'article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtre Mots-Clés": {
+      "main": [
+        [
+          {
+            "node": "Normalisation des dates",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Filtre Mots-Clés",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lecture Flux RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Préparation des données pour la BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        []
+      ]
+    },
+    "Liste des sources - flux RSS": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ajout du nom de la source à l'article": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalisation des dates": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparation des données pour la BDD": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Normalisation des dates",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b8d47bae-c231-4cbd-ba5a-678519b53bbe",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "116cf0ca1c1cf232ab6b902f8e6bd446ea6d1d62ba97ade3d6b42bf20b3eca31"
+  },
+  "id": "MHobLhWqTcTFfBZe",
+  "tags": []
+}
